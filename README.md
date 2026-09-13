@@ -1,116 +1,24 @@
-# XDown - X Media Downloader
+# اشتراكاتي | Ishtirakati
+تطبيق Android أصلي بـ Kotlin وJetpack Compose لمشتركي Skyline SAS Radius v4.
 
-Professional Android application for downloading media from X (formerly Twitter).
+## ما تم تنفيذه
+- تسجيل الدخول إلى SAS API مع AES-256-CBC OpenSSL Salted format مطابق للمرجع.
+- Retrofit/OkHttp/Gson، حفظ آمن للتوكن وبيانات الدخول عبر EncryptedSharedPreferences.
+- لوحة عربية RTL تعرض بيانات الاشتراك وتتعامل مع أسماء الحقول البديلة.
+- WorkManager كل 15 دقيقة لتنبيهات قبل 24 ساعة وقبل ساعة وعند الانتهاء مع منع التكرار.
+- Material 3، طلب POST_NOTIFICATIONS لأندرويد 13+، تحديث وتسجيل خروج.
 
-## Features
-
-- **Media Downloading**: Download photos, videos, and GIFs from X
-- **Quality Selection**: Choose from multiple quality options
-- **URL Support**: Paste tweet URLs directly
-- **Username Support**: Enter @username to browse media
-- **Clipboard Support**: One-tap paste from clipboard
-- **Professional UI**: Material 3 design with Jetpack Compose
-- **Download Progress**: Real-time progress with notifications
-- **Foreground Service**: Background downloading
-- **Download History**: Track all downloads
-- **Splash Screen**: Animated splash screen
-- **Settings Screen**: App configuration
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| Language | Kotlin |
-| UI | Jetpack Compose + Material 3 |
-| Architecture | MVVM + Clean Architecture |
-| DI | Hilt |
-| Networking | OkHttp |
-| Image Loading | Coil |
-| JSON Parsing | Gson |
-| HTML Parsing | Custom + OkHttp |
-| Persistence | DataStore |
-
-## Project Structure
-
-```
-app/src/main/java/com/xdown/app/
-├── MainActivity.kt
-├── XDownApplication.kt
-├── data/
-│   ├── model/          # Data models
-│   ├── remote/         # Network services
-│   └── repository/     # Data repositories
-├── domain/usecase/     # Business logic
-├── di/                 # Hilt DI modules
-├── ui/
-│   ├── theme/          # Colors, Typography
-│   ├── screens/        # App screens
-│   ├── components/     # Reusable components
-│   └── navigation/     # Navigation graph
-└── util/               # Utility classes
-```
-
-## Setup
-
-### Prerequisites
-
-- Android Studio Hedgehog (2023.1.1) or later
-- JDK 17+
-- Android SDK 34
-
-### Build
-
-1. Clone the repository
-2. Open in Android Studio
-3. Wait for Gradle sync
-4. Run on device or emulator (API 26+)
-
-### Command Line Build
-
+## البناء
 ```bash
-# Debug build
 ./gradlew assembleDebug
-
-# Release build
 ./gradlew assembleRelease
-
-# Install on connected device
-./gradlew installDebug
 ```
+ملحوظة: الخادم الحالي يستخدم HTTP كما ورد في المواصفات، لذلك تم تفعيل cleartext traffic. يفضّل استخدام HTTPS عند توفره.
 
-## Permissions
+## Release
 
-| Permission | Purpose |
-|------------|---------|
-| INTERNET | Fetch media from X |
-| ACCESS_NETWORK_STATE | Check connectivity |
-| READ/WRITE_EXTERNAL_STORAGE | Save downloads (Android < 13) |
-| READ_MEDIA_IMAGES/VIDEO | Access downloads (Android 13+) |
-| POST_NOTIFICATIONS | Download progress |
-| FOREGROUND_SERVICE | Background downloads |
-| WAKE_LOCK | Keep device awake during download |
+- Version: v1.0.0
+- Signed APK: `release/ishtirakati-v1.0.0.apk`
+- SHA-256: `4081f2dfd0826657b6ab7763dcaaa5dc5fbb9074e36f1b69d1cd368f7cdaee84`
 
-## How It Works
-
-1. **Input**: User enters a tweet URL or @username
-2. **Fetch**: App scrapes media using multiple APIs (fxtwitter, vxtwitter, HTML)
-3. **Parse**: Extracts all available media and quality options
-4. **Select**: User chooses quality from bottom sheet
-5. **Download**: Media is saved to Downloads/XDown folder
-6. **Track**: Progress shown in notifications and UI
-
-## Download Location
-
-All downloads are saved to:
-```
-/Downloads/XDown/
-```
-
-File naming: `{TYPE}_X_{ID}_{timestamp}.{ext}`
-- Images: `IMG_X_{id}_{time}.jpg`
-- Videos: `VID_X_{id}_{time}.mp4`
-- GIFs: `GIF_X_{id}_{time}.gif`
-
-## License
-
-MIT License
+The APK is built for Android API 24+ and signed with APK Signature Scheme v2/v3.

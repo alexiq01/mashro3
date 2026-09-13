@@ -1,0 +1,6 @@
+package com.example.subscriptions.util
+import com.example.subscriptions.model.Subscription
+import com.google.gson.*
+import java.text.SimpleDateFormat
+import java.util.*
+object JsonUtils { private fun v(o:JsonObject,k:List<String>):String=k.firstNotNullOfOrNull{if(o.has(it)&&!o[it].isJsonNull)o[it].asString else null}.orEmpty().ifBlank{"غير متوفر"}; fun subscription(root:JsonObject):Subscription { val o=root.getAsJsonObject("data")?:root.getAsJsonObject("user")?:root; val exp=v(o,listOf("expiry","expiration","expiry_date","expire_date","expiration_date")); val ms=parse(exp); return Subscription(v(o,listOf("name","username","user_name")),v(o,listOf("profile","package","package_name","plan")),v(o,listOf("start","start_date","registration_date")),exp,v(o,listOf("time_used","used_time")),v(o,listOf("time_left","remaining_time")),v(o,listOf("traffic_used","used_traffic","download")),v(o,listOf("traffic_left","remaining_traffic","remaining")),ms) }; private fun parse(s:String):Long { val formats=listOf("yyyy-MM-dd HH:mm:ss","yyyy-MM-dd","dd/MM/yyyy HH:mm:ss","dd/MM/yyyy"); for(f in formats)try{return SimpleDateFormat(f,Locale.US).parse(s)?.time?:0}catch(_:Exception){}; return s.toLongOrNull()?.let{if(it<10000000000)it*1000 else it}?:0 } }
