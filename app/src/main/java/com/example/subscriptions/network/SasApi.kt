@@ -13,7 +13,7 @@ import retrofit2.http.POST
 
  data class SasEncryptedRequest(val payload: String)
  data class SasLoginResponse(val token: String? = null, val message: String? = null)
- data class SasUserResponse(val data: JsonObject? = null, val user: JsonObject? = null, val message: String? = null)
+ data class SasUserResponse(val data: JsonObject? = null, val user: JsonObject? = null, val payload: String? = null, val message: String? = null)
  interface SasApi {
     @POST("login") suspend fun login(@Body body: SasEncryptedRequest): Response<SasLoginResponse>
     @POST("index/user") suspend fun getUser(@Header("Authorization") token: String, @Body body: SasEncryptedRequest): Response<SasUserResponse>

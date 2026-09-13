@@ -1,7 +1,7 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 
 android { namespace = "com.example.subscriptions"; compileSdk = 34
-    defaultConfig { applicationId = "com.example.subscriptions"; minSdk = 24; targetSdk = 34; versionCode = 1; versionName = "1.0.0" }
+    defaultConfig { applicationId = "com.example.subscriptions"; minSdk = 24; targetSdk = 34; versionCode = 2; versionName = "1.1.0" }
     buildTypes { release { isMinifyEnabled = false; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
@@ -18,7 +18,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.compose.ui:ui"); implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3"); implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material:1.6.1"); implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.squareup.retrofit2:retrofit:2.9.0"); implementation("com.squareup.retrofit2:converter-gson:2.9.0")

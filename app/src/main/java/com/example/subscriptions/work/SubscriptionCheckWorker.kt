@@ -3,11 +3,14 @@ package com.example.subscriptions.work
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.subscriptions.notifications.NotificationHelper
+import com.example.subscriptions.repository.SubscriptionRepository
 import com.example.subscriptions.storage.SecurePrefs
 
 class SubscriptionCheckWorker(context: android.content.Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val expiry = SecurePrefs(applicationContext).expiry
+        val secure = SecurePrefs(applicationContext)
+        if (secure.token != null) SubscriptionRepository(secure).refreshOrRelogin()
+        val expiry = secure.expiry
         if (expiry == 0L) return Result.success()
         val difference = expiry - System.currentTimeMillis()
         val key = when {
