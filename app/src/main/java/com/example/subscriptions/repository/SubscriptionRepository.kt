@@ -23,5 +23,6 @@ class SubscriptionRepository(private val prefs: SecurePrefs) {
         val result=JsonUtils.subscription(root); prefs.expiry=result.expiryMillis; result
     }
     suspend fun refreshOrRelogin(): Result<Subscription> { val current=prefs.token; if(current!=null){fetch(current).onSuccess{return Result.success(it)}}; val u=prefs.username; val p=prefs.password; if(u.isNullOrBlank()||p.isNullOrBlank())return Result.failure(IllegalStateException("لم يتم تسجيل الدخول بعد")); return login(u,p).fold(onSuccess={fetch(it)},onFailure={Result.failure(it)}) }
+    suspend fun action(name:String, payload:Map<String,Any?>): Result<Unit> = runCatching { val t=prefs.token ?: throw IllegalStateException("انتهت جلسة الدخول"); val body=ApiFactory.encoded(Gson().toJson(payload)); val response=when(name){"extend"->ApiFactory.api.extend("Bearer $t",body);"service"->ApiFactory.api.changeService("Bearer $t",body);else->ApiFactory.api.userAction("Bearer $t",body)}; if(!response.isSuccessful)throw IllegalStateException(response.body()?.message ?: "تعذر تنفيذ العملية") }
     class UnauthorizedException: Exception()
 }

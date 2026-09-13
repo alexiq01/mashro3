@@ -10,6 +10,7 @@ import retrofit2.http.Body
 import retrofit2.http.Header
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
  data class SasEncryptedRequest(val payload: String)
  data class SasWebResponse(val status: Int = 0, val token: String? = null, val data: JsonObject? = null, val message: String? = null)
@@ -19,6 +20,9 @@ import retrofit2.http.POST
     @GET("user") suspend fun user(@Header("Authorization") token: String): Response<SasWebResponse>
     @GET("service") suspend fun service(@Header("Authorization") token: String): Response<SasWebResponse>
     @GET("dashboard") suspend fun dashboard(@Header("Authorization") token: String): Response<SasWebResponse>
+    @POST("user") suspend fun userAction(@Header("Authorization") token: String, @Body body: SasEncryptedRequest): Response<SasWebResponse>
+    @POST("user/extend") suspend fun extend(@Header("Authorization") token: String, @Body body: SasEncryptedRequest): Response<SasWebResponse>
+    @POST("service") suspend fun changeService(@Header("Authorization") token: String, @Body body: SasEncryptedRequest): Response<SasWebResponse>
  }
  object ApiFactory {
     const val BASE = "http://admin.skylineiq.com/user/api/index.php/api/"
