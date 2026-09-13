@@ -49,16 +49,13 @@ class MainActivity : ComponentActivity() {
 
 class AppVm : ViewModel() {
     var token by mutableStateOf<String?>(null); var loading by mutableStateOf(false); var error by mutableStateOf<String?>(null); var subscription by mutableStateOf<Subscription?>(null)
-    private var prefs: SecurePrefs? = null
-    var networkState by mutableStateOf<ConnectionState>(ConnectionState.OffNetwork)
-    private var watcher: NetworkWatcher? = null
-    fun init(storage: SecurePrefs, context: android.content.Context) { if (prefs != null) return; prefs = storage; token = storage.token; watcher = NetworkWatcher(context, storage, SubscriptionRepository(storage)); watcher?.start(); viewModelScope.launch { watcher?.state?.collect { networkState = it } }; if (token != null) load() }
-    fun login(username: String, password: String) { loading = true; error = null; viewModelScope.launch { try { val json = Gson().toJson(mapOf("username" to username, "password" to password)); var response = ApiFactory.api.login(ApiFactory.encoded(json)); if (!response.isSuccessful) response = ApiFactory.api.login(ApiFactory.plain(json)); val received = response.body()?.token; if (!response.isSuccessful || received.isNullOrBlank()) throw Exception("اسم المستخدم أو كلمة المرور غير صحيحة"); token = received; prefs?.token = received; prefs?.username = username; prefs?.password = password; load() } catch (e: Exception) { error = if (e is java.io.IOException) "تعذر الاتصال بالخادم" else e.message ?: "حدث خطأ غير متوقع"; loading = false } } }
-    private fun load() { viewModelScope.launch { try { val json = Gson().toJson(mapOf("username" to prefs?.username.orEmpty())); var response = ApiFactory.api.getUser("Bearer ${token.orEmpty()}", ApiFactory.encoded(json)); if (!response.isSuccessful) response = ApiFactory.api.getUser("Bearer ${token.orEmpty()}", ApiFactory.plain(json)); if (!response.isSuccessful) throw Exception(); val root = Gson().fromJson(Gson().toJson(response.body()), JsonObject::class.java); subscription = JsonUtils.subscription(root); prefs?.expiry = subscription?.expiryMillis ?: 0L; loading = false } catch (_: Exception) { error = "تعذر تحميل بيانات الاشتراك"; loading = false } } }
-    fun refresh() { if (token != null) load() }
-    fun logout() { watcher?.stop(); prefs?.clear(); token = null; subscription = null }
+    private var prefs: SecurePrefs? = null; private var repository: SubscriptionRepository? = null
+    var networkState by mutableStateOf<ConnectionState>(ConnectionState.OffNetwork); private var watcher: NetworkWatcher? = null
+    fun init(storage: SecurePrefs, context: android.content.Context) { if (prefs != null) return; prefs=storage; repository=SubscriptionRepository(storage); token=storage.token; watcher=NetworkWatcher(context,storage,repository!!); watcher?.start(); viewModelScope.launch { watcher?.state?.collect { networkState=it } }; if(token!=null) load() }
+    fun login(username:String,password:String) { loading=true; error=null; viewModelScope.launch { repository?.login(username,password)?.fold({ token=it; load() },{ error=if(it is java.io.IOException) "تعذر الاتصال بالخادم" else it.message ?: "اسم المستخدم أو كلمة المرور غير صحيحة"; loading=false }) } }
+    private fun load() { loading=true; viewModelScope.launch { repository?.refreshOrRelogin()?.fold({ subscription=it; token=prefs?.token; loading=false },{ error="تعذر تحميل بيانات الاشتراك"; loading=false }) } }
+    fun refresh(){if(token!=null)load()}; fun logout(){watcher?.stop();prefs?.clear();token=null;subscription=null}
 }
-
 @Composable fun AppScreen(vm: AppVm = viewModel()) { val context = LocalContext.current; LaunchedEffect(Unit) { vm.init(SecurePrefs(context), context) }; if (vm.token == null) LoginScreen(vm) else DashboardScreen(vm) }
 
 @Composable private fun LoginScreen(vm: AppVm) {
@@ -74,43 +71,20 @@ class AppVm : ViewModel() {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable private fun DashboardScreen(vm: AppVm) {
-    val data = vm.subscription
-    val refreshing = vm.loading
-    val pullState = rememberPullRefreshState(refreshing, { vm.refresh() })
-    Box(Modifier.fillMaxSize().pullRefresh(pullState)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), horizontalAlignment = Alignment.End) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("اشتراكاتي", style = MaterialTheme.typography.headlineMedium, color = Color(0xFF1565C0))
-                IconButton({ vm.logout() }) { Icon(Icons.Default.Logout, "تسجيل الخروج") }
-            }
-            val online = vm.networkState is ConnectionState.OnSkylineNetwork || vm.networkState is ConnectionState.AutoLoginSuccess
-            Text(if (online) "🟢 متصل بشبكة Skyline" else "⚪ غير متصل بالشبكة", color = if (online) Color(0xFF2E7D32) else Color.Gray)
-            if (vm.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (data == null && !vm.loading) Text(vm.error ?: "لا توجد بيانات", modifier = Modifier.padding(32.dp))
-            data?.let { item ->
-                Card(Modifier.fillMaxWidth().padding(top = 20.dp)) {
-                    Column(Modifier.padding(20.dp)) {
-                        Text("مرحباً ${item.name}", style = MaterialTheme.typography.titleLarge)
-                        Text(item.profile, color = Color(0xFF1565C0))
-                        Spacer(Modifier.height(20.dp))
-                        Detail("تاريخ البداية", item.start); Detail("تاريخ الانتهاء", item.expiry)
-                        Detail("الوقت المستهلك", item.timeUsed); Detail("الوقت المتبقي", item.timeLeft)
-                        Detail("الترافيك المستهلك", item.trafficUsed); Detail("الترافيك المتبقي", item.trafficLeft)
-                        val difference = item.expiryMillis - System.currentTimeMillis()
-                        val statusColor = when { difference < 0 -> Color(0xFFC62828); difference < 86_400_000L -> Color(0xFFEF6C00); else -> Color(0xFF2E7D32) }
-                        val status = when { difference < 0 -> "منتهي"; difference < 86_400_000L -> "ينتهي قريباً"; else -> "نشط" }
-                        val progress = if (item.expiryMillis > 0L) (difference.toFloat() / item.expiryMillis.toFloat()).coerceIn(0f, 1f) else 0f
-                        CircularProgressIndicator(progress = { progress }, color = statusColor, modifier = Modifier.size(72.dp).padding(top = 12.dp))
-                        Text(status, color = statusColor, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
-                    }
-                }
-            }
-            Button({ vm.refresh() }, modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) { Text("تحديث البيانات") }
+    val data=vm.subscription; val refreshing=vm.loading; val pullState=rememberPullRefreshState(refreshing,{vm.refresh()})
+    Box(Modifier.fillMaxSize().pullRefresh(pullState)) { Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),horizontalAlignment=Alignment.End) {
+        Text("اشتراكاتي",style=MaterialTheme.typography.headlineMedium,color=Color(0xFF1565C0),modifier=Modifier.fillMaxWidth()); Text("Skyline Internet",color=Color.Gray,modifier=Modifier.fillMaxWidth())
+        val online=vm.networkState is ConnectionState.OnSkylineNetwork || vm.networkState is ConnectionState.AutoLoginSuccess
+        Text(if(online) "🟢 ONLINE" else "⚪ غير متصل",color=if(online)Color(0xFF2E7D32) else Color.Gray,modifier=Modifier.fillMaxWidth().padding(top=14.dp))
+        if(vm.loading)LinearProgressIndicator(Modifier.fillMaxWidth())
+        if(data==null&&!vm.loading)Text(vm.error?:"لا توجد بيانات",modifier=Modifier.padding(32.dp))
+        data?.let { item ->
+            Text("مرحباً بك",style=MaterialTheme.typography.titleLarge,modifier=Modifier.fillMaxWidth().padding(top=24.dp))
+            Card(Modifier.fillMaxWidth().padding(top=12.dp)){Column(Modifier.padding(18.dp)){Text("الاشتراك",style=MaterialTheme.typography.titleMedium); Text(item.days+" يوم متبقي",style=MaterialTheme.typography.headlineSmall,modifier=Modifier.padding(vertical=12.dp)); Text(item.profile,style=MaterialTheme.typography.titleMedium,color=Color(0xFF1565C0)); Text("🟢 "+item.status); Detail("ينتهي",item.expiry)}}
+            Row(Modifier.fillMaxWidth().padding(top=16.dp),horizontalArrangement=Arrangement.SpaceBetween){Column{Text("الرصيد",color=Color.Gray);Text(item.balance)};Column{Text("الديون",color=Color.Gray);Text(item.debt)}}
+            Card(Modifier.fillMaxWidth().padding(top=16.dp)){Column(Modifier.padding(18.dp)){Text("معلومات الخدمة",style=MaterialTheme.typography.titleMedium);Detail("السعر",item.price);Detail("الحالة",if(online)"ONLINE" else item.status);Detail("التجديد التلقائي",item.autoRenew)}}
         }
-        PullRefreshIndicator(refreshing, pullState, Modifier.align(Alignment.TopCenter))
-    }
+        Button({vm.refresh()},modifier=Modifier.fillMaxWidth().padding(top=20.dp)){Text("🔄 تحديث البيانات")}
+    }; PullRefreshIndicator(refreshing,pullState,Modifier.align(Alignment.TopCenter)) }
 }
-
-@Composable private fun Detail(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text(value); Text(label, color = Color.Gray) }
-}
+@Composable private fun Detail(label:String,value:String){Row(Modifier.fillMaxWidth().padding(vertical=6.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(value);Text(label,color=Color.Gray)}}
